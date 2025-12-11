@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ויזואליזציה אינטראקטיבית של קיפול חלבונים</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 250px;
+            z-index: 100;
+        }
+
+        #controls h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .control-group input[type="number"] {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #667eea;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:active {
+            background: #4457c2;
+        }
+
+        #info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            max-width: 300px;
+        }
+
+        .value-display {
+            display: inline-block;
+            min-width: 50px;
+            text-align: left;
+            direction: ltr;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container"></div>
+        
+        <div id="controls">
+            <h2>🎛️ בקרות</h2>
+            
+            <div class="control-group">
+                <label>מהירות אנימציה: <span class="value-display" id="speed-value">1.0</span></label>
+                <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1">
+            </div>
+
+            <div class="control-group">
+                <label>מספר חומצות אמינו: <span class="value-display" id="length-value">20</span></label>
+                <input type="range" id="length" min="10" max="50" step="1" value="20">
+            </div>
+
+            <div class="control-group">
+                <label>טמפרטורה: <span class="value-display" id="temp-value">0.5</span></label>
+                <input type="range" id="temperature" min="0.1" max="2" step="0.1" value="0.5">
+            </div>
+
+            <div class="control-group">
+                <label>כוח משיכה: <span class="value-display" id="attraction-value">0.3</span></label>
+                <input type="range" id="attraction" min="0" max="1" step="0.1" value="0.3">
+            </div>
+
+            <button id="play-pause">⏸️ השהייה</button>
+            <button id="reset">🔄 איפוס</button>
+            <button id="random">🎲 אקראי</button>
+        </div>
+
+        <div id="info">
+            <strong>מידע:</strong><br>
+            <span id="energy-display">אנרגיה: 0.00</span><br>
+            <span id="step-display">צעד: 0</span><br>
+            <span id="status-display">מצב: פועל</span>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Simple OrbitControls implementation
+        function SimpleOrbitControls(camera, domElement) {
+            this.camera = camera;
+            this.domElement = domElement;
+            this.enableDamping = true;
+            this.dampingFactor = 0.05;
+            
+            let isMouseDown = false;
+            let lastMouseX = 0, lastMouseY = 0;
+            let spherical = new THREE.Spherical();
+            spherical.setFromVector3(camera.position);
+            
+            const onMouseDown = (e) => {
+                isMouseDown = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                domElement.style.cursor = 'grabbing';
+            };
+            
+            const onMouseMove = (e) => {
+                if (!isMouseDown) return;
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+                
+                spherical.theta -= dx * 0.01;
+                spherical.phi += dy * 0.01;
+                spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+                
+                camera.position.setFromSpherical(spherical);
+                camera.lookAt(0, 0, 0);
+                
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            };
+            
+            const onMouseUp = () => {
+                isMouseDown = false;
+                domElement.style.cursor = 'grab';
+            };
+            
+            const onWheel = (e) => {
+                e.preventDefault();
+                spherical.radius += e.deltaY * 0.01;
+                spherical.radius = Math.max(10, Math.min(100, spherical.radius));
+                camera.position.setFromSpherical(spherical);
+                camera.lookAt(0, 0, 0);
+            };
+            
+            domElement.addEventListener('mousedown', onMouseDown);
+            domElement.addEventListener('mousemove', onMouseMove);
+            domElement.addEventListener('mouseup', onMouseUp);
+            domElement.addEventListener('mouseleave', onMouseUp);
+            domElement.addEventListener('wheel', onWheel);
+            domElement.style.cursor = 'grab';
+            
+            this.update = function() {
+                // Damping implementation if needed
+            };
+        }
+    </script>
+    
+    <script>
+        // הגדרות בסיסיות
+        let scene, camera, renderer, controls;
+        let proteinChain = [];
+        let spheres = [];
+        let bonds = [];
+        let isPlaying = true;
+        let animationSpeed = 1.0;
+        let chainLength = 20;
+        let temperature = 0.5;
+        let attraction = 0.3;
+        let step = 0;
+        let energy = 0;
+
+        // אתחול
+        function init() {
+            // יצירת סצנה
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+
+            // יצירת מצלמה
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(30, 30, 30);
+            camera.lookAt(0, 0, 0);
+
+            // יצירת רנדרר
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // בקרות מצלמה
+            controls = new SimpleOrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // תאורה
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 50, 50);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            const pointLight = new THREE.PointLight(0x667eea, 0.5);
+            pointLight.position.set(-50, -50, -50);
+            scene.add(pointLight);
+
+            // יצירת שרשרת חלבון ראשונית
+            createProteinChain();
+
+            // הגדרת אירועים
+            setupControls();
+
+            // התחלת אנימציה
+            animate();
+        }
+
+        // יצירת שרשרת חלבון
+        function createProteinChain() {
+            // ניקוי קודם
+            spheres.forEach(sphere => scene.remove(sphere));
+            bonds.forEach(bond => scene.remove(bond));
+            proteinChain = [];
+            spheres = [];
+            bonds = [];
+
+            // יצירת נקודות אקראיות בשרשרת
+            for (let i = 0; i < chainLength; i++) {
+                const x = (i - chainLength / 2) * 2;
+                const y = Math.sin(i * 0.5) * 2;
+                const z = Math.cos(i * 0.3) * 2;
+                proteinChain.push(new THREE.Vector3(x, y, z));
+            }
+
+            // יצירת כדורים (אטומים)
+            const sphereGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf9ca24, 0x6c5ce7];
+            
+            proteinChain.forEach((pos, i) => {
+                const material = new THREE.MeshPhongMaterial({
+                    color: colors[i % colors.length],
+                    emissive: colors[i % colors.length],
+                    emissiveIntensity: 0.2
+                });
+                const sphere = new THREE.Mesh(sphereGeometry, material);
+                sphere.position.copy(pos);
+                sphere.castShadow = true;
+                sphere.receiveShadow = true;
+                scene.add(sphere);
+                spheres.push(sphere);
+            });
+
+            // יצירת קשרים (bonds)
+            const bondGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+            const bondMaterial = new THREE.MeshPhongMaterial({
+                color: 0x888888,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            for (let i = 0; i < proteinChain.length - 1; i++) {
+                const bond = new THREE.Mesh(bondGeometry, bondMaterial);
+                updateBond(bond, proteinChain[i], proteinChain[i + 1]);
+                scene.add(bond);
+                bonds.push(bond);
+            }
+        }
+
+        // עדכון קשר בין שני אטומים
+        function updateBond(bond, pos1, pos2) {
+            const mid = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
+            bond.position.copy(mid);
+            bond.lookAt(pos2);
+            bond.rotateX(Math.PI / 2);
+            const distance = pos1.distanceTo(pos2);
+            bond.scale.y = distance;
+        }
+
+        // סימולציית קיפול חלבון
+        function simulateFolding() {
+            if (!isPlaying) return;
+
+            step++;
+            
+            // חישוב כוחות בין אטומים
+            const forces = proteinChain.map(() => new THREE.Vector3());
+            
+            for (let i = 0; i < proteinChain.length; i++) {
+                for (let j = i + 2; j < proteinChain.length; j++) {
+                    const vec = new THREE.Vector3().subVectors(proteinChain[j], proteinChain[i]);
+                    const dist = vec.length();
+                    
+                    if (dist > 0.1) {
+                        // כוח דחייה/משיכה
+                        const force = attraction * (1 / (dist * dist + 0.1)) - 0.1;
+                        vec.normalize().multiplyScalar(force);
+                        forces[i].add(vec);
+                        forces[j].sub(vec);
+                    }
+                }
+            }
+
+            // כוח אלסטי בין אטומים סמוכים
+            const targetBondLength = 2.0;
+            for (let i = 0; i < proteinChain.length - 1; i++) {
+                const vec = new THREE.Vector3().subVectors(proteinChain[i + 1], proteinChain[i]);
+                const dist = vec.length();
+                const diff = dist - targetBondLength;
+                vec.normalize().multiplyScalar(diff * 0.1);
+                forces[i].add(vec);
+                forces[i + 1].sub(vec);
+            }
+
+            // עדכון מיקומים עם טמפרטורה (תנועה תרמית)
+            for (let i = 1; i < proteinChain.length - 1; i++) {
+                forces[i].multiplyScalar(animationSpeed * 0.01);
+                
+                // הוספת רעש תרמי
+                const thermal = new THREE.Vector3(
+                    (Math.random() - 0.5) * temperature,
+                    (Math.random() - 0.5) * temperature,
+                    (Math.random() - 0.5) * temperature
+                );
+                forces[i].add(thermal);
+                
+                proteinChain[i].add(forces[i]);
+            }
+
+            // עדכון כדורים וקשרים
+            spheres.forEach((sphere, i) => {
+                sphere.position.copy(proteinChain[i]);
+            });
+
+            bonds.forEach((bond, i) => {
+                updateBond(bond, proteinChain[i], proteinChain[i + 1]);
+            });
+
+            // חישוב אנרגיה
+            energy = 0;
+            for (let i = 0; i < proteinChain.length; i++) {
+                for (let j = i + 2; j < proteinChain.length; j++) {
+                    const dist = proteinChain[i].distanceTo(proteinChain[j]);
+                    energy += attraction / (dist + 0.1);
+                }
+            }
+        }
+
+        // הגדרת בקרות
+        function setupControls() {
+            const speedSlider = document.getElementById('speed');
+            const lengthSlider = document.getElementById('length');
+            const tempSlider = document.getElementById('temperature');
+            const attractionSlider = document.getElementById('attraction');
+            const playPauseBtn = document.getElementById('play-pause');
+            const resetBtn = document.getElementById('reset');
+            const randomBtn = document.getElementById('random');
+
+            speedSlider.addEventListener('input', (e) => {
+                animationSpeed = parseFloat(e.target.value);
+                document.getElementById('speed-value').textContent = animationSpeed.toFixed(1);
+            });
+
+            lengthSlider.addEventListener('input', (e) => {
+                chainLength = parseInt(e.target.value);
+                document.getElementById('length-value').textContent = chainLength;
+                createProteinChain();
+            });
+
+            tempSlider.addEventListener('input', (e) => {
+                temperature = parseFloat(e.target.value);
+                document.getElementById('temp-value').textContent = temperature.toFixed(1);
+            });
+
+            attractionSlider.addEventListener('input', (e) => {
+                attraction = parseFloat(e.target.value);
+                document.getElementById('attraction-value').textContent = attraction.toFixed(1);
+            });
+
+            playPauseBtn.addEventListener('click', () => {
+                isPlaying = !isPlaying;
+                playPauseBtn.textContent = isPlaying ? '⏸️ השהייה' : '▶️ המשך';
+                document.getElementById('status-display').textContent = 
+                    `מצב: ${isPlaying ? 'פועל' : 'מושהה'}`;
+            });
+
+            resetBtn.addEventListener('click', () => {
+                createProteinChain();
+                step = 0;
+                energy = 0;
+            });
+
+            randomBtn.addEventListener('click', () => {
+                // יצירת שרשרת אקראית
+                proteinChain.forEach((pos, i) => {
+                    pos.set(
+                        (Math.random() - 0.5) * 20,
+                        (Math.random() - 0.5) * 20,
+                        (Math.random() - 0.5) * 20
+                    );
+                });
+                step = 0;
+            });
+
+            // עדכון ערכים ראשוניים
+            document.getElementById('speed-value').textContent = animationSpeed.toFixed(1);
+            document.getElementById('length-value').textContent = chainLength;
+            document.getElementById('temp-value').textContent = temperature.toFixed(1);
+            document.getElementById('attraction-value').textContent = attraction.toFixed(1);
+        }
+
+        // לולאת אנימציה
+        function animate() {
+            requestAnimationFrame(animate);
+
+            simulateFolding();
+
+            controls.update();
+            renderer.render(scene, camera);
+
+            // עדכון מידע
+            document.getElementById('energy-display').textContent = 
+                `אנרגיה: ${energy.toFixed(2)}`;
+            document.getElementById('step-display').textContent = 
+                `צעד: ${step}`;
+        }
+
+        // טיפול בשינוי גודל חלון
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // התחלה
+        init();
+    </script>
+</body>
+</html>

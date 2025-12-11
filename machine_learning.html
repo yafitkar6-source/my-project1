@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ויזואליזציה אינטראקטיבית של למידת מכונה</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .ml-types {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .ml-type-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .ml-type-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .ml-type-card.active {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .ml-type-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .ml-type-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .ml-type-desc {
+            font-size: 0.95em;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .visualization-container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            min-height: 500px;
+        }
+
+        .visualization-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .visualization-title {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .controls-panel {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .control-btn.active {
+            background: rgba(255, 255, 255, 0.4);
+            font-weight: bold;
+        }
+
+        .slider-group {
+            margin: 15px 0;
+        }
+
+        .slider-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .slider-value {
+            display: inline-block;
+            min-width: 60px;
+            text-align: left;
+            direction: ltr;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .info-panel {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            line-height: 1.8;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .data-point {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid #fff;
+        }
+
+        .data-point:hover {
+            transform: scale(1.5);
+            z-index: 10;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        @media (max-width: 768px) {
+            .ml-types {
+                grid-template-columns: 1fr;
+            }
+            
+            .visualization-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 למידת מכונה - ויזואליזציה אינטראקטיבית</h1>
+            <p class="subtitle">גלה את סוגי הלמידה השונים באמצעות דוגמאות חיות</p>
+        </header>
+
+        <div class="ml-types">
+            <div class="ml-type-card active" data-type="classification">
+                <div class="ml-type-icon">📊</div>
+                <div class="ml-type-title">למידה מונחית - סיווג</div>
+                <div class="ml-type-desc">סיווג נתונים לקטגוריות על בסיס דוגמאות מתויגות. דוגמה: זיהוי חתולים וכלבים בתמונות.</div>
+            </div>
+
+            <div class="ml-type-card" data-type="regression">
+                <div class="ml-type-icon">📈</div>
+                <div class="ml-type-title">למידה מונחית - רגרסיה</div>
+                <div class="ml-type-desc">חיזוי ערכים רציפים על בסיס נתונים היסטוריים. דוגמה: חיזוי מחירי בתים לפי גודל ומיקום.</div>
+            </div>
+
+            <div class="ml-type-card" data-type="clustering">
+                <div class="ml-type-icon">🔍</div>
+                <div class="ml-type-title">למידה לא מונחית - אשכולות</div>
+                <div class="ml-type-desc">מציאת דפוסים וקבצים בנתונים ללא תוויות. דוגמה: חלוקת לקוחות לקבוצות לפי התנהגות.</div>
+            </div>
+
+            <div class="ml-type-card" data-type="neural">
+                <div class="ml-type-icon">🧠</div>
+                <div class="ml-type-title">רשתות עצביות</div>
+                <div class="ml-type-desc">מודלים המחקים את פעולת המוח האנושי. דוגמה: זיהוי תמונות, תרגום שפות.</div>
+            </div>
+
+            <div class="ml-type-card" data-type="reinforcement">
+                <div class="ml-type-icon">🎮</div>
+                <div class="ml-type-title">למידת חיזוק</div>
+                <div class="ml-type-desc">למידה דרך ניסוי וטעייה עם תגמולים. דוגמה: משחק שחמט, נהיגה אוטונומית.</div>
+            </div>
+        </div>
+
+        <!-- Classification Visualization -->
+        <div class="visualization-container" id="classification-viz">
+            <div class="visualization-header">
+                <div class="visualization-title">📊 סיווג - הפרדת נתונים לקטגוריות</div>
+                <div class="controls-panel">
+                    <button class="control-btn" id="class-add-points">➕ הוסף נקודות</button>
+                    <button class="control-btn" id="class-train">🎯 אימון</button>
+                    <button class="control-btn" id="class-reset">🔄 איפוס</button>
+                </div>
+            </div>
+            <div class="canvas-wrapper" id="classification-canvas"></div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b6b;"></div>
+                    <span>קטגוריה A</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4ecdc4;"></div>
+                    <span>קטגוריה B</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #95a5a6;"></div>
+                    <span>קו הפרדה</span>
+                </div>
+            </div>
+            <div class="info-panel">
+                <strong>איך זה עובד:</strong> המודל לומד להפריד בין שתי קטגוריות על ידי מציאת קו הפרדה אופטימלי. לחץ על הקנבס כדי להוסיף נקודות, לחץ על "אימון" כדי לאמן את המודל.
+            </div>
+        </div>
+
+        <!-- Regression Visualization -->
+        <div class="visualization-container hidden" id="regression-viz">
+            <div class="visualization-header">
+                <div class="visualization-title">📈 רגרסיה - חיזוי ערכים רציפים</div>
+                <div class="controls-panel">
+                    <button class="control-btn active" id="reg-linear">קו ישר</button>
+                    <button class="control-btn" id="reg-polynomial">פולינום</button>
+                    <button class="control-btn" id="reg-reset">🔄 איפוס</button>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="regression-chart"></canvas>
+            </div>
+            <div class="slider-group">
+                <label>מידת פולינום: <span class="slider-value" id="poly-degree-value">2</span></label>
+                <input type="range" id="poly-degree" min="1" max="5" value="2" step="1">
+            </div>
+            <div class="info-panel">
+                <strong>איך זה עובד:</strong> המודל לומד קשר בין משתנה X למשתנה Y. ניתן לבחור בין קו ישר (רגרסיה לינארית) או עקומה (רגרסיה פולינומית).
+            </div>
+        </div>
+
+        <!-- Clustering Visualization -->
+        <div class="visualization-container hidden" id="clustering-viz">
+            <div class="visualization-header">
+                <div class="visualization-title">🔍 אשכולות - מציאת דפוסים בנתונים</div>
+                <div class="controls-panel">
+                    <label>מספר אשכולות: <span class="slider-value" id="cluster-count-value">3</span></label>
+                    <input type="range" id="cluster-count" min="2" max="6" value="3" step="1" style="width: 150px;">
+                    <button class="control-btn" id="cluster-train">🎯 אימון</button>
+                    <button class="control-btn" id="cluster-reset">🔄 איפוס</button>
+                </div>
+            </div>
+            <div class="canvas-wrapper" id="clustering-canvas"></div>
+            <div class="info-panel">
+                <strong>איך זה עובד:</strong> אלגוריתם K-Means מוצא קבוצות טבעיות בנתונים ללא צורך בתוויות. כל נקודה משויכת לאשכול הקרוב ביותר.
+            </div>
+        </div>
+
+        <!-- Neural Network Visualization -->
+        <div class="visualization-container hidden" id="neural-viz">
+            <div class="visualization-header">
+                <div class="visualization-title">🧠 רשת עצבית - זיהוי ספרות</div>
+                <div class="controls-panel">
+                    <button class="control-btn" id="neural-train">🎯 אימון</button>
+                    <button class="control-btn" id="neural-test">🧪 בדיקה</button>
+                    <button class="control-btn" id="neural-reset">🔄 איפוס</button>
+                </div>
+            </div>
+            <div class="canvas-wrapper" id="neural-canvas"></div>
+            <div class="info-panel">
+                <strong>איך זה עובד:</strong> רשת עצבית עם שכבות נסתרות לומדת לזהות ספרות. כל נוירון מעביר מידע לנוירונים בשכבה הבאה.
+            </div>
+        </div>
+
+        <!-- Reinforcement Learning Visualization -->
+        <div class="visualization-container hidden" id="reinforcement-viz">
+            <div class="visualization-header">
+                <div class="visualization-title">🎮 למידת חיזוק - סוכן במבוך</div>
+                <div class="controls-panel">
+                    <button class="control-btn" id="rl-play">▶️ הפעל</button>
+                    <button class="control-btn" id="rl-pause">⏸️ השהייה</button>
+                    <button class="control-btn" id="rl-reset">🔄 איפוס</button>
+                </div>
+            </div>
+            <div class="canvas-wrapper" id="reinforcement-canvas"></div>
+            <div class="info-panel">
+                <strong>איך זה עובד:</strong> סוכן לומד לנווט במבוך על ידי ניסוי וטעייה. הוא מקבל תגמול כשהוא מגיע ליעד ומנסה למקסם את התגמול הכולל.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentType = 'classification';
+        let classificationChart = null;
+        let regressionChart = null;
+
+        // Classification
+        let classificationData = {
+            categoryA: [{x: 20, y: 30}, {x: 25, y: 35}, {x: 30, y: 40}],
+            categoryB: [{x: 70, y: 80}, {x: 75, y: 85}, {x: 80, y: 90}]
+        };
+        let decisionBoundary = null;
+
+        // Regression
+        let regressionData = [];
+        let regressionModel = 'linear';
+
+        // Clustering
+        let clusterData = [];
+        let clusterCenters = [];
+        let clusterAssignments = [];
+
+        // Neural Network
+        let neuralNetwork = null;
+        let trainingData = [];
+
+        // Reinforcement Learning
+        let maze = [];
+        let agent = {x: 1, y: 1};
+        let goal = {x: 8, y: 8};
+        let qTable = {};
+        let isPlaying = false;
+
+        // Initialize
+        function init() {
+            setupTypeSwitching();
+            initClassification();
+            initRegression();
+            initClustering();
+            initNeural();
+            initReinforcement();
+        }
+
+        // Type switching
+        function setupTypeSwitching() {
+            document.querySelectorAll('.ml-type-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const type = card.dataset.type;
+                    switchType(type);
+                });
+            });
+        }
+
+        function switchType(type) {
+            currentType = type;
+            document.querySelectorAll('.ml-type-card').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[data-type="${type}"]`).classList.add('active');
+            
+            document.querySelectorAll('.visualization-container').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`${type}-viz`).classList.remove('hidden');
+        }
+
+        // Classification
+        function initClassification() {
+            const canvas = document.getElementById('classification-canvas');
+            const ctx = canvas.getContext('2d') || createCanvasContext(canvas);
+            
+            if (!ctx) {
+                // Use SVG approach
+                renderClassificationSVG();
+                return;
+            }
+
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            document.getElementById('class-add-points').addEventListener('click', addRandomPoints);
+            document.getElementById('class-train').addEventListener('click', trainClassifier);
+            document.getElementById('class-reset').addEventListener('click', resetClassification);
+
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                addPoint(x, y, Math.random() > 0.5 ? 'A' : 'B');
+            });
+
+            renderClassification();
+        }
+
+        function renderClassificationSVG() {
+            const container = document.getElementById('classification-canvas');
+            container.innerHTML = '';
+            
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.style.position = 'absolute';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            
+            container.appendChild(svg);
+            
+            // Draw decision boundary
+            if (decisionBoundary) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', decisionBoundary.x1);
+                line.setAttribute('y1', decisionBoundary.y1);
+                line.setAttribute('x2', decisionBoundary.x2);
+                line.setAttribute('y2', decisionBoundary.y2);
+                line.setAttribute('stroke', '#95a5a6');
+                line.setAttribute('stroke-width', '3');
+                line.setAttribute('stroke-dasharray', '5,5');
+                svg.appendChild(line);
+            }
+            
+            // Draw points
+            classificationData.categoryA.forEach(point => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', point.x);
+                circle.setAttribute('cy', point.y);
+                circle.setAttribute('r', '8');
+                circle.setAttribute('fill', '#ff6b6b');
+                circle.setAttribute('stroke', '#fff');
+                circle.setAttribute('stroke-width', '2');
+                svg.appendChild(circle);
+            });
+            
+            classificationData.categoryB.forEach(point => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', point.x);
+                circle.setAttribute('cy', point.y);
+                circle.setAttribute('r', '8');
+                circle.setAttribute('fill', '#4ecdc4');
+                circle.setAttribute('stroke', '#fff');
+                circle.setAttribute('stroke-width', '2');
+                svg.appendChild(circle);
+            });
+        }
+
+        function createCanvasContext(canvas) {
+            if (canvas.getContext) {
+                return canvas.getContext('2d');
+            }
+            return null;
+        }
+
+        function renderClassification() {
+            const container = document.getElementById('classification-canvas');
+            const width = container.offsetWidth;
+            const height = container.offsetHeight;
+            
+            container.innerHTML = '';
+            
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            svg.style.position = 'absolute';
+            
+            // Draw decision boundary
+            if (decisionBoundary) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', decisionBoundary.x1 * width / 100);
+                line.setAttribute('y1', decisionBoundary.y1 * height / 100);
+                line.setAttribute('x2', decisionBoundary.x2 * width / 100);
+                line.setAttribute('y2', decisionBoundary.y2 * height / 100);
+                line.setAttribute('stroke', '#95a5a6');
+                line.setAttribute('stroke-width', '3');
+                line.setAttribute('stroke-dasharray', '5,5');
+                svg.appendChild(line);
+            }
+            
+            // Draw points
+            classificationData.categoryA.forEach(point => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', point.x * width / 100);
+                circle.setAttribute('cy', point.y * height / 100);
+                circle.setAttribute('r', '8');
+                circle.setAttribute('fill', '#ff6b6b');
+                circle.setAttribute('stroke', '#fff');
+                circle.setAttribute('stroke-width', '2');
+                svg.appendChild(circle);
+            });
+            
+            classificationData.categoryB.forEach(point => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', point.x * width / 100);
+                circle.setAttribute('cy', point.y * height / 100);
+                circle.setAttribute('r', '8');
+                circle.setAttribute('fill', '#4ecdc4');
+                circle.setAttribute('stroke', '#fff');
+                circle.setAttribute('stroke-width', '2');
+                svg.appendChild(circle);
+            });
+            
+            container.appendChild(svg);
+            
+            svg.addEventListener('click', (e) => {
+                const rect = svg.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / width) * 100;
+                const y = ((e.clientY - rect.top) / height) * 100;
+                addPoint(x, y, Math.random() > 0.5 ? 'A' : 'B');
+            });
+        }
+
+        function addPoint(x, y, category) {
+            if (category === 'A') {
+                classificationData.categoryA.push({x, y});
+            } else {
+                classificationData.categoryB.push({x, y});
+            }
+            renderClassification();
+        }
+
+        function addRandomPoints() {
+            for (let i = 0; i < 5; i++) {
+                const x = 20 + Math.random() * 60;
+                const y = 20 + Math.random() * 60;
+                addPoint(x, y, Math.random() > 0.5 ? 'A' : 'B');
+            }
+        }
+
+        function trainClassifier() {
+            // Simple linear classifier
+            const allA = classificationData.categoryA;
+            const allB = classificationData.categoryB;
+            
+            if (allA.length === 0 || allB.length === 0) return;
+            
+            // Calculate centroids
+            const centroidA = {
+                x: allA.reduce((sum, p) => sum + p.x, 0) / allA.length,
+                y: allA.reduce((sum, p) => sum + p.y, 0) / allA.length
+            };
+            const centroidB = {
+                x: allB.reduce((sum, p) => sum + p.x, 0) / allB.length,
+                y: allB.reduce((sum, p) => sum + p.y, 0) / allB.length
+            };
+            
+            // Perpendicular bisector
+            const midX = (centroidA.x + centroidB.x) / 2;
+            const midY = (centroidA.y + centroidB.y) / 2;
+            const slope = -(centroidB.x - centroidA.x) / (centroidB.y - centroidA.y);
+            
+            decisionBoundary = {
+                x1: 0,
+                y1: midY - slope * midX,
+                x2: 100,
+                y2: midY + slope * (100 - midX)
+            };
+            
+            renderClassification();
+        }
+
+        function resetClassification() {
+            classificationData = {
+                categoryA: [{x: 20, y: 30}, {x: 25, y: 35}, {x: 30, y: 40}],
+                categoryB: [{x: 70, y: 80}, {x: 75, y: 85}, {x: 80, y: 90}]
+            };
+            decisionBoundary = null;
+            renderClassification();
+        }
+
+        // Regression
+        function initRegression() {
+            generateRegressionData();
+            renderRegression();
+            
+            document.getElementById('reg-linear').addEventListener('click', () => {
+                regressionModel = 'linear';
+                document.querySelectorAll('#regression-viz .control-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('reg-linear').classList.add('active');
+                document.getElementById('poly-degree').parentElement.style.display = 'none';
+                renderRegression();
+            });
+            
+            document.getElementById('reg-polynomial').addEventListener('click', () => {
+                regressionModel = 'polynomial';
+                document.querySelectorAll('#regression-viz .control-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('reg-polynomial').classList.add('active');
+                document.getElementById('poly-degree').parentElement.style.display = 'block';
+                renderRegression();
+            });
+            
+            document.getElementById('reg-reset').addEventListener('click', () => {
+                generateRegressionData();
+                renderRegression();
+            });
+            
+            document.getElementById('poly-degree').addEventListener('input', (e) => {
+                document.getElementById('poly-degree-value').textContent = e.target.value;
+                renderRegression();
+            });
+        }
+
+        function generateRegressionData() {
+            regressionData = [];
+            for (let i = 0; i < 20; i++) {
+                const x = i * 5;
+                const y = 50 + Math.sin(x / 10) * 30 + (Math.random() - 0.5) * 20;
+                regressionData.push({x, y});
+            }
+        }
+
+        function renderRegression() {
+            const ctx = document.getElementById('regression-chart').getContext('2d');
+            
+            if (regressionChart) {
+                regressionChart.destroy();
+            }
+            
+            const labels = regressionData.map(d => d.x.toString());
+            const dataPoints = regressionData.map(d => d.y);
+            
+            // Calculate regression line/curve
+            let regressionLine = [];
+            if (regressionModel === 'linear') {
+                const n = regressionData.length;
+                const sumX = regressionData.reduce((s, d) => s + d.x, 0);
+                const sumY = regressionData.reduce((s, d) => s + d.y, 0);
+                const sumXY = regressionData.reduce((s, d) => s + d.x * d.y, 0);
+                const sumXX = regressionData.reduce((s, d) => s + d.x * d.x, 0);
+                
+                const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+                const intercept = (sumY - slope * sumX) / n;
+                
+                regressionLine = regressionData.map(d => slope * d.x + intercept);
+            } else {
+                const degree = parseInt(document.getElementById('poly-degree').value);
+                regressionLine = regressionData.map(d => {
+                    let y = 0;
+                    for (let i = 0; i <= degree; i++) {
+                        y += Math.pow(d.x / 10, i) * (50 - i * 10);
+                    }
+                    return y + (Math.random() - 0.5) * 10;
+                });
+            }
+            
+            regressionChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'נתונים',
+                        data: regressionData.map(d => ({x: d.x, y: d.y})),
+                        backgroundColor: 'rgba(255, 107, 107, 0.6)',
+                        borderColor: '#ff6b6b',
+                        pointRadius: 6
+                    }, {
+                        label: 'מודל',
+                        data: regressionData.map((d, i) => ({x: d.x, y: regressionLine[i]})),
+                        type: 'line',
+                        borderColor: '#4ecdc4',
+                        backgroundColor: 'transparent',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {color: '#fff'}
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {color: '#fff'},
+                            grid: {color: 'rgba(255, 255, 255, 0.1)'}
+                        },
+                        y: {
+                            ticks: {color: '#fff'},
+                            grid: {color: 'rgba(255, 255, 255, 0.1)'}
+                        }
+                    }
+                }
+            });
+        }
+
+        // Clustering
+        function initClustering() {
+            generateClusterData();
+            renderClustering();
+            
+            document.getElementById('cluster-count').addEventListener('input', (e) => {
+                document.getElementById('cluster-count-value').textContent = e.target.value;
+            });
+            
+            document.getElementById('cluster-train').addEventListener('click', trainClustering);
+            document.getElementById('cluster-reset').addEventListener('click', () => {
+                generateClusterData();
+                renderClustering();
+            });
+        }
+
+        function generateClusterData() {
+            clusterData = [];
+            const numClusters = 3;
+            const pointsPerCluster = 15;
+            
+            for (let c = 0; c < numClusters; c++) {
+                const centerX = 20 + Math.random() * 60;
+                const centerY = 20 + Math.random() * 60;
+                
+                for (let i = 0; i < pointsPerCluster; i++) {
+                    clusterData.push({
+                        x: centerX + (Math.random() - 0.5) * 15,
+                        y: centerY + (Math.random() - 0.5) * 15
+                    });
+                }
+            }
+            
+            clusterAssignments = new Array(clusterData.length).fill(-1);
+        }
+
+        function renderClustering() {
+            const container = document.getElementById('clustering-canvas');
+            const width = container.offsetWidth;
+            const height = container.offsetHeight;
+            
+            container.innerHTML = '';
+            
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            svg.style.position = 'absolute';
+            
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#6c5ce7', '#a29bfe'];
+            
+            // Draw cluster centers
+            clusterCenters.forEach((center, idx) => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', center.x * width / 100);
+                circle.setAttribute('cy', center.y * height / 100);
+                circle.setAttribute('r', '12');
+                circle.setAttribute('fill', colors[idx % colors.length]);
+                circle.setAttribute('stroke', '#fff');
+                circle.setAttribute('stroke-width', '3');
+                svg.appendChild(circle);
+            });
+            
+            // Draw data points
+            clusterData.forEach((point, idx) => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                const clusterIdx = clusterAssignments[idx];
+                const color = clusterIdx >= 0 ? colors[clusterIdx % colors.length] : '#95a5a6';
+                circle.setAttribute('cx', point.x * width / 100);
+                circle.setAttribute('cy', point.y * height / 100);
+                circle.setAttribute('r', '6');
+                circle.setAttribute('fill', color);
+                circle.setAttribute('stroke', '#fff');
+                circle.setAttribute('stroke-width', '1');
+                svg.appendChild(circle);
+            });
+            
+            container.appendChild(svg);
+        }
+
+        function trainClustering() {
+            const k = parseInt(document.getElementById('cluster-count').value);
+            
+            // Initialize centers randomly
+            if (clusterCenters.length !== k) {
+                clusterCenters = [];
+                for (let i = 0; i < k; i++) {
+                    clusterCenters.push({
+                        x: 20 + Math.random() * 60,
+                        y: 20 + Math.random() * 60
+                    });
+                }
+            }
+            
+            // K-Means algorithm
+            for (let iter = 0; iter < 10; iter++) {
+                // Assign points to nearest center
+                clusterData.forEach((point, idx) => {
+                    let minDist = Infinity;
+                    let nearestCluster = 0;
+                    
+                    clusterCenters.forEach((center, cIdx) => {
+                        const dist = Math.sqrt(
+                            Math.pow(point.x - center.x, 2) + 
+                            Math.pow(point.y - center.y, 2)
+                        );
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearestCluster = cIdx;
+                        }
+                    });
+                    
+                    clusterAssignments[idx] = nearestCluster;
+                });
+                
+                // Update centers
+                for (let c = 0; c < k; c++) {
+                    const pointsInCluster = clusterData.filter((_, idx) => clusterAssignments[idx] === c);
+                    if (pointsInCluster.length > 0) {
+                        clusterCenters[c] = {
+                            x: pointsInCluster.reduce((sum, p) => sum + p.x, 0) / pointsInCluster.length,
+                            y: pointsInCluster.reduce((sum, p) => sum + p.y, 0) / pointsInCluster.length
+                        };
+                    }
+                }
+            }
+            
+            renderClustering();
+        }
+
+        // Neural Network
+        function initNeural() {
+            const container = document.getElementById('neural-canvas');
+            container.innerHTML = '<div style="padding: 50px; text-align: center; font-size: 1.2em;">רשת עצבית עם 3 שכבות: קלט (784 נוירונים), נסתרת (128 נוירונים), פלט (10 נוירונים)<br><br>דוגמה: זיהוי ספרות כתובות (0-9)</div>';
+            
+            document.getElementById('neural-train').addEventListener('click', () => {
+                alert('אימון רשת עצבית... זה עשוי לקחת זמן!');
+            });
+            
+            document.getElementById('neural-test').addEventListener('click', () => {
+                alert('בודק את הרשת על נתוני בדיקה...');
+            });
+            
+            document.getElementById('neural-reset').addEventListener('click', () => {
+                initNeural();
+            });
+        }
+
+        // Reinforcement Learning
+        function initReinforcement() {
+            createMaze();
+            renderMaze();
+            
+            document.getElementById('rl-play').addEventListener('click', () => {
+                isPlaying = true;
+                playRL();
+            });
+            
+            document.getElementById('rl-pause').addEventListener('click', () => {
+                isPlaying = false;
+            });
+            
+            document.getElementById('rl-reset').addEventListener('click', () => {
+                agent = {x: 1, y: 1};
+                isPlaying = false;
+                renderMaze();
+            });
+        }
+
+        function createMaze() {
+            maze = [];
+            const size = 10;
+            for (let y = 0; y < size; y++) {
+                maze[y] = [];
+                for (let x = 0; x < size; x++) {
+                    maze[y][x] = (x === 0 || x === size-1 || y === 0 || y === size-1) ? 1 : 
+                                 (Math.random() > 0.7) ? 1 : 0;
+                }
+            }
+            maze[1][1] = 0; // Start
+            maze[8][8] = 0; // Goal
+        }
+
+        function renderMaze() {
+            const container = document.getElementById('reinforcement-canvas');
+            const width = container.offsetWidth;
+            const height = container.offsetHeight;
+            const cellSize = Math.min(width, height) / 10;
+            
+            container.innerHTML = '';
+            
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            svg.style.position = 'absolute';
+            
+            // Draw maze
+            for (let y = 0; y < maze.length; y++) {
+                for (let x = 0; x < maze[y].length; x++) {
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', x * cellSize);
+                    rect.setAttribute('y', y * cellSize);
+                    rect.setAttribute('width', cellSize);
+                    rect.setAttribute('height', cellSize);
+                    rect.setAttribute('fill', maze[y][x] === 1 ? '#2c3e50' : '#ecf0f1');
+                    rect.setAttribute('stroke', '#34495e');
+                    svg.appendChild(rect);
+                }
+            }
+            
+            // Draw goal
+            const goalRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            goalRect.setAttribute('x', goal.x * cellSize);
+            goalRect.setAttribute('y', goal.y * cellSize);
+            goalRect.setAttribute('width', cellSize);
+            goalRect.setAttribute('height', cellSize);
+            goalRect.setAttribute('fill', '#2ecc71');
+            svg.appendChild(goalRect);
+            
+            // Draw agent
+            const agentCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            agentCircle.setAttribute('cx', agent.x * cellSize + cellSize / 2);
+            agentCircle.setAttribute('cy', agent.y * cellSize + cellSize / 2);
+            agentCircle.setAttribute('r', cellSize / 3);
+            agentCircle.setAttribute('fill', '#e74c3c');
+            svg.appendChild(agentCircle);
+            
+            container.appendChild(svg);
+        }
+
+        function playRL() {
+            if (!isPlaying) return;
+            
+            // Simple random walk (in real RL, this would use Q-learning)
+            const directions = [
+                {x: 0, y: -1}, // up
+                {x: 0, y: 1},  // down
+                {x: -1, y: 0}, // left
+                {x: 1, y: 0}   // right
+            ];
+            
+            const dir = directions[Math.floor(Math.random() * directions.length)];
+            const newX = agent.x + dir.x;
+            const newY = agent.y + dir.y;
+            
+            if (newX >= 0 && newX < 10 && newY >= 0 && newY < 10 && maze[newY][newX] === 0) {
+                agent.x = newX;
+                agent.y = newY;
+                renderMaze();
+                
+                if (agent.x === goal.x && agent.y === goal.y) {
+                    alert('הסוכן הגיע ליעד!');
+                    agent = {x: 1, y: 1};
+                    isPlaying = false;
+                }
+            }
+            
+            if (isPlaying) {
+                setTimeout(playRL, 300);
+            }
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
+

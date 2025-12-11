@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מעקב מניות ישראליות - ויזואליזציה אינטראקטיבית</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .search-box, .filter-select {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            min-width: 200px;
+        }
+
+        .search-box:focus, .filter-select:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .stocks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stock-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .stock-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .stock-card.selected {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .stock-name {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .stock-symbol {
+            font-size: 0.9em;
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .stock-price {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stock-change {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .stock-change.positive {
+            color: #4CAF50;
+        }
+
+        .stock-change.negative {
+            color: #f44336;
+        }
+
+        .stock-info {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            min-height: 400px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .time-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .time-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .time-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .time-btn.active {
+            background: rgba(255, 255, 255, 0.4);
+            font-weight: bold;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .stocks-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .search-box, .filter-select {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📈 מעקב מניות ישראליות</h1>
+            <p class="subtitle">ויזואליזציה אינטראקטיבית בזמן אמת</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">סה"כ מניות</div>
+                <div class="stat-value" id="totalStocks">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">ממוצע שינוי יומי</div>
+                <div class="stat-value" id="avgChange">0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">ערך שוק כולל</div>
+                <div class="stat-value" id="totalMarketCap">0</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <input type="text" class="search-box" id="searchBox" placeholder="חפש מניה...">
+            <select class="filter-select" id="sectorFilter">
+                <option value="">כל הסקטורים</option>
+            </select>
+            <select class="filter-select" id="sortFilter">
+                <option value="name">מיון לפי שם</option>
+                <option value="price">מיון לפי מחיר</option>
+                <option value="change">מיון לפי שינוי</option>
+            </select>
+        </div>
+
+        <div class="stocks-grid" id="stocksGrid"></div>
+
+        <div class="chart-container" id="chartContainer">
+            <div class="chart-header">
+                <div class="chart-title" id="chartTitle">בחר מניה להצגת גרף</div>
+                <div class="time-buttons">
+                    <button class="time-btn" data-period="1D">יום</button>
+                    <button class="time-btn active" data-period="1W">שבוע</button>
+                    <button class="time-btn" data-period="1M">חודש</button>
+                    <button class="time-btn" data-period="3M">3 חודשים</button>
+                </div>
+            </div>
+            <canvas id="stockChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // נתוני מניות ישראליות
+        const stocksData = [
+            { symbol: 'TEVA', name: 'טבע', price: 45.20, change: 2.3, volume: 1250000, marketCap: 52000000000, sector: 'תרופות' },
+            { symbol: 'CHKP', name: 'צ\'ק פוינט', price: 128.50, change: -1.2, volume: 850000, marketCap: 28000000000, sector: 'טכנולוגיה' },
+            { symbol: 'MNDY', name: 'מנדי', price: 95.80, change: 3.5, volume: 420000, marketCap: 18000000000, sector: 'טכנולוגיה' },
+            { symbol: 'WIX', name: 'ויקס', price: 112.30, change: 1.8, volume: 680000, marketCap: 19500000000, sector: 'טכנולוגיה' },
+            { symbol: 'FVRR', name: 'פרילנסר', price: 28.90, change: -2.1, volume: 320000, marketCap: 12000000000, sector: 'טכנולוגיה' },
+            { symbol: 'NICE', name: 'נייס', price: 198.40, change: 0.9, volume: 250000, marketCap: 12500000000, sector: 'טכנולוגיה' },
+            { symbol: 'RDWR', name: 'רדוור', price: 42.60, change: 2.7, volume: 180000, marketCap: 8500000000, sector: 'טכנולוגיה' },
+            { symbol: 'WKHS', name: 'וורקהאוס', price: 15.30, change: -0.8, volume: 95000, marketCap: 3200000000, sector: 'תעשייה' },
+            { symbol: 'CYBR', name: 'סייבר-ארק', price: 67.20, change: 1.5, volume: 410000, marketCap: 9800000000, sector: 'אבטחה' },
+            { symbol: 'GLBE', name: 'גלובל-אי', price: 38.50, change: -1.3, volume: 220000, marketCap: 7200000000, sector: 'טכנולוגיה' },
+            { symbol: 'BAND', name: 'בנדוויד\'ת', price: 12.80, change: 4.2, volume: 150000, marketCap: 4500000000, sector: 'תקשורת' },
+            { symbol: 'RDNT', name: 'רדנט', price: 24.70, change: -0.5, volume: 190000, marketCap: 6800000000, sector: 'טכנולוגיה' },
+            { symbol: 'ALBO', name: 'אלבו', price: 89.10, change: 2.1, volume: 280000, marketCap: 11000000000, sector: 'תרופות' },
+            { symbol: 'INMD', name: 'אינמוד', price: 34.20, change: -1.8, volume: 140000, marketCap: 5500000000, sector: 'בריאות' },
+            { symbol: 'TARO', name: 'טארו', price: 56.40, change: 0.7, volume: 210000, marketCap: 8200000000, sector: 'תרופות' }
+        ];
+
+        let selectedStock = null;
+        let currentPeriod = '1W';
+        let chart = null;
+        let filteredStocks = [...stocksData];
+
+        // אתחול
+        function init() {
+            populateSectors();
+            renderStocks();
+            updateStats();
+            setupEventListeners();
+            startPriceUpdates();
+        }
+
+        // מילוי רשימת סקטורים
+        function populateSectors() {
+            const sectors = [...new Set(stocksData.map(s => s.sector))];
+            const select = document.getElementById('sectorFilter');
+            sectors.forEach(sector => {
+                const option = document.createElement('option');
+                option.value = sector;
+                option.textContent = sector;
+                select.appendChild(option);
+            });
+        }
+
+        // רינדור מניות
+        function renderStocks() {
+            const grid = document.getElementById('stocksGrid');
+            grid.innerHTML = '';
+
+            filteredStocks.forEach(stock => {
+                const card = document.createElement('div');
+                card.className = `stock-card ${selectedStock?.symbol === stock.symbol ? 'selected' : ''}`;
+                card.onclick = () => selectStock(stock);
+
+                const changeClass = stock.change >= 0 ? 'positive' : 'negative';
+                const changeSymbol = stock.change >= 0 ? '↑' : '↓';
+
+                card.innerHTML = `
+                    <div class="stock-header">
+                        <div class="stock-name">${stock.name}</div>
+                        <div class="stock-symbol">${stock.symbol}</div>
+                    </div>
+                    <div class="stock-price">₪${stock.price.toFixed(2)}</div>
+                    <div class="stock-change ${changeClass}">
+                        ${changeSymbol} ${Math.abs(stock.change).toFixed(2)}%
+                    </div>
+                    <div class="stock-info">
+                        <span>נפח: ${formatNumber(stock.volume)}</span>
+                        <span>${stock.sector}</span>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        // בחירת מניה
+        function selectStock(stock) {
+            selectedStock = stock;
+            renderStocks();
+            updateChart();
+            document.getElementById('chartTitle').textContent = `${stock.name} (${stock.symbol})`;
+        }
+
+        // עדכון גרף
+        function updateChart() {
+            if (!selectedStock) {
+                document.getElementById('chartContainer').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('chartContainer').classList.remove('hidden');
+
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+
+            const data = generateChartData(selectedStock, currentPeriod);
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'מחיר (₪)',
+                        data: data.prices,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            rtl: true,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            titleFont: { size: 14 },
+                            bodyFont: { size: 12 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                color: '#fff',
+                                callback: function(value) {
+                                    return '₪' + value.toFixed(2);
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#fff'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // יצירת נתוני גרף
+        function generateChartData(stock, period) {
+            const periods = {
+                '1D': { points: 24, label: 'שעות' },
+                '1W': { points: 7, label: 'ימים' },
+                '1M': { points: 30, label: 'ימים' },
+                '3M': { points: 90, label: 'ימים' }
+            };
+
+            const config = periods[period];
+            const labels = [];
+            const prices = [];
+            const basePrice = stock.price;
+            const volatility = stock.change / 100;
+
+            for (let i = config.points; i >= 0; i--) {
+                if (period === '1D') {
+                    labels.push(`${i}:00`);
+                } else {
+                    labels.push(`יום ${config.points - i + 1}`);
+                }
+
+                // סימולציה של תנודות מחיר
+                const randomChange = (Math.random() - 0.5) * volatility * 2;
+                const price = basePrice * (1 + randomChange * (config.points - i) / config.points);
+                prices.push(price);
+            }
+
+            return { labels, prices };
+        }
+
+        // עדכון סטטיסטיקות
+        function updateStats() {
+            document.getElementById('totalStocks').textContent = filteredStocks.length;
+            
+            const avgChange = filteredStocks.reduce((sum, s) => sum + s.change, 0) / filteredStocks.length;
+            document.getElementById('avgChange').textContent = 
+                `${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%`;
+            document.getElementById('avgChange').style.color = avgChange >= 0 ? '#4CAF50' : '#f44336';
+
+            const totalMarketCap = filteredStocks.reduce((sum, s) => sum + s.marketCap, 0);
+            document.getElementById('totalMarketCap').textContent = formatMarketCap(totalMarketCap);
+        }
+
+        // פורמט מספרים
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        // פורמט שווי שוק
+        function formatMarketCap(num) {
+            if (num >= 1000000000) {
+                return (num / 1000000000).toFixed(1) + 'B';
+            }
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            }
+            return formatNumber(num);
+        }
+
+        // הגדרת מאזיני אירועים
+        function setupEventListeners() {
+            document.getElementById('searchBox').addEventListener('input', filterStocks);
+            document.getElementById('sectorFilter').addEventListener('change', filterStocks);
+            document.getElementById('sortFilter').addEventListener('change', filterStocks);
+
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentPeriod = this.dataset.period;
+                    if (selectedStock) {
+                        updateChart();
+                    }
+                });
+            });
+        }
+
+        // סינון מניות
+        function filterStocks() {
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            const sector = document.getElementById('sectorFilter').value;
+            const sortBy = document.getElementById('sortFilter').value;
+
+            filteredStocks = stocksData.filter(stock => {
+                const matchesSearch = stock.name.toLowerCase().includes(searchTerm) ||
+                                    stock.symbol.toLowerCase().includes(searchTerm);
+                const matchesSector = !sector || stock.sector === sector;
+                return matchesSearch && matchesSector;
+            });
+
+            // מיון
+            filteredStocks.sort((a, b) => {
+                switch(sortBy) {
+                    case 'price':
+                        return b.price - a.price;
+                    case 'change':
+                        return b.change - a.change;
+                    default:
+                        return a.name.localeCompare(b.name);
+                }
+            });
+
+            renderStocks();
+            updateStats();
+            
+            if (selectedStock && !filteredStocks.find(s => s.symbol === selectedStock.symbol)) {
+                selectedStock = null;
+                document.getElementById('chartContainer').classList.add('hidden');
+            }
+        }
+
+        // עדכון מחירים (סימולציה)
+        function startPriceUpdates() {
+            setInterval(() => {
+                stocksData.forEach(stock => {
+                    // סימולציה של תנודות מחיר קטנות
+                    const change = (Math.random() - 0.5) * 0.5;
+                    stock.price = Math.max(0.01, stock.price * (1 + change / 100));
+                    stock.change = (Math.random() - 0.5) * 3;
+                });
+
+                if (selectedStock) {
+                    const updatedStock = stocksData.find(s => s.symbol === selectedStock.symbol);
+                    if (updatedStock) {
+                        selectedStock = updatedStock;
+                        updateChart();
+                    }
+                }
+
+                renderStocks();
+                updateStats();
+            }, 5000); // עדכון כל 5 שניות
+        }
+
+        // אתחול בעת טעינת הדף
+        init();
+    </script>
+</body>
+</html>
