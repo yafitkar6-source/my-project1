@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>משחק שח מט אינטראקטיבי</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e8ba3 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .current-player {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .current-player.white {
+            color: #fff;
+        }
+
+        .current-player.black {
+            color: #000;
+            background: #fff;
+            padding: 5px 15px;
+            border-radius: 5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 0;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            border: 3px solid #8b4513;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .square {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .square.light {
+            background-color: #f0d9b5;
+        }
+
+        .square.dark {
+            background-color: #b58863;
+        }
+
+        .square.selected {
+            background-color: #7fc8f8 !important;
+            box-shadow: inset 0 0 20px rgba(127, 200, 248, 0.8);
+        }
+
+        .square.possible-move {
+            background-color: #90ee90 !important;
+        }
+
+        .square.possible-move::after {
+            content: '';
+            position: absolute;
+            width: 30%;
+            height: 30%;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+        }
+
+        .square.in-check {
+            background-color: #ff6b6b !important;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .square:hover:not(.selected) {
+            background-color: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        .piece {
+            user-select: none;
+            pointer-events: none;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+        }
+
+        .status-message {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            font-size: 1.1em;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .coordinates {
+            position: absolute;
+            font-size: 0.3em;
+            color: rgba(0, 0, 0, 0.5);
+            font-weight: bold;
+        }
+
+        .square[data-file="a"]::before {
+            content: attr(data-file);
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            font-size: 0.3em;
+            color: rgba(0, 0, 0, 0.5);
+            font-weight: bold;
+        }
+
+        .square[data-rank="1"]::after {
+            content: attr(data-rank);
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.3em;
+            color: rgba(0, 0, 0, 0.5);
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .chess-board {
+                max-width: 100%;
+            }
+
+            .square {
+                font-size: 2em;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .game-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>♔ משחק שח מט ♔</h1>
+        
+        <div class="game-info">
+            <div class="current-player white" id="currentPlayer">תור: לבן</div>
+            <div class="controls">
+                <button onclick="resetGame()">משחק חדש</button>
+                <button onclick="undoMove()">ביטול מהלך</button>
+            </div>
+        </div>
+
+        <div class="chess-board" id="chessBoard"></div>
+
+        <div class="status-message" id="statusMessage">בחר כלי כדי להתחיל</div>
+    </div>
+
+    <script>
+        const pieces = {
+            'white': {
+                'king': '♔',
+                'queen': '♕',
+                'rook': '♖',
+                'bishop': '♗',
+                'knight': '♘',
+                'pawn': '♙'
+            },
+            'black': {
+                'king': '♚',
+                'queen': '♛',
+                'rook': '♜',
+                'bishop': '♝',
+                'knight': '♞',
+                'pawn': '♟'
+            }
+        };
+
+        let board = [];
+        let currentPlayer = 'white';
+        let selectedSquare = null;
+        let moveHistory = [];
+        let gameOver = false;
+
+        // יצירת לוח התחלתי
+        function initializeBoard() {
+            board = Array(8).fill(null).map(() => Array(8).fill(null));
+            
+            // כלים שחורים
+            board[0][0] = {type: 'rook', color: 'black'};
+            board[0][1] = {type: 'knight', color: 'black'};
+            board[0][2] = {type: 'bishop', color: 'black'};
+            board[0][3] = {type: 'queen', color: 'black'};
+            board[0][4] = {type: 'king', color: 'black'};
+            board[0][5] = {type: 'bishop', color: 'black'};
+            board[0][6] = {type: 'knight', color: 'black'};
+            board[0][7] = {type: 'rook', color: 'black'};
+            for (let i = 0; i < 8; i++) {
+                board[1][i] = {type: 'pawn', color: 'black'};
+            }
+
+            // כלים לבנים
+            board[7][0] = {type: 'rook', color: 'white'};
+            board[7][1] = {type: 'knight', color: 'white'};
+            board[7][2] = {type: 'bishop', color: 'white'};
+            board[7][3] = {type: 'queen', color: 'white'};
+            board[7][4] = {type: 'king', color: 'white'};
+            board[7][5] = {type: 'bishop', color: 'white'};
+            board[7][6] = {type: 'knight', color: 'white'};
+            board[7][7] = {type: 'rook', color: 'white'};
+            for (let i = 0; i < 8; i++) {
+                board[6][i] = {type: 'pawn', color: 'white'};
+            }
+        }
+
+        function renderBoard() {
+            const boardElement = document.getElementById('chessBoard');
+            boardElement.innerHTML = '';
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    square.dataset.file = String.fromCharCode(97 + col);
+                    square.dataset.rank = 8 - row;
+
+                    if (board[row][col]) {
+                        const piece = document.createElement('div');
+                        piece.className = 'piece';
+                        piece.textContent = pieces[board[row][col].color][board[row][col].type];
+                        square.appendChild(piece);
+                    }
+
+                    square.addEventListener('click', () => handleSquareClick(row, col));
+                    boardElement.appendChild(square);
+                }
+            }
+
+            updateStatus();
+        }
+
+        function handleSquareClick(row, col) {
+            if (gameOver) return;
+
+            const piece = board[row][col];
+            const squareElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+
+            // אם יש כלי נבחר
+            if (selectedSquare) {
+                const [selectedRow, selectedCol] = selectedSquare;
+                const selectedPiece = board[selectedRow][selectedCol];
+
+                // אם לחצנו על אותו כלי - בטל בחירה
+                if (selectedRow === row && selectedCol === col) {
+                    clearSelection();
+                    return;
+                }
+
+                // אם לחצנו על כלי מאותו צבע - בחר אותו במקום
+                if (piece && piece.color === selectedPiece.color) {
+                    clearSelection();
+                    selectSquare(row, col);
+                    return;
+                }
+
+                // נסה לבצע מהלך
+                if (isValidMove(selectedRow, selectedCol, row, col)) {
+                    makeMove(selectedRow, selectedCol, row, col);
+                    clearSelection();
+                } else {
+                    clearSelection();
+                    if (piece && piece.color === currentPlayer) {
+                        selectSquare(row, col);
+                    }
+                }
+            } else {
+                // בחר כלי אם הוא של השחקן הנוכחי
+                if (piece && piece.color === currentPlayer) {
+                    selectSquare(row, col);
+                }
+            }
+        }
+
+        function selectSquare(row, col) {
+            selectedSquare = [row, col];
+            const squareElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            squareElement.classList.add('selected');
+
+            // הדגש מהלכים אפשריים
+            highlightPossibleMoves(row, col);
+        }
+
+        function clearSelection() {
+            if (selectedSquare) {
+                const [row, col] = selectedSquare;
+                const squareElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                squareElement.classList.remove('selected');
+            }
+            selectedSquare = null;
+            clearHighlights();
+        }
+
+        function highlightPossibleMoves(row, col) {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (isValidMove(row, col, r, c)) {
+                        const squareElement = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+                        squareElement.classList.add('possible-move');
+                    }
+                }
+            }
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.possible-move').forEach(sq => {
+                sq.classList.remove('possible-move');
+            });
+        }
+
+        function isValidMove(fromRow, fromCol, toRow, toCol) {
+            const piece = board[fromRow][fromCol];
+            if (!piece) return false;
+
+            const targetPiece = board[toRow][toCol];
+            if (targetPiece && targetPiece.color === piece.color) return false;
+
+            // בדיקת מהלכים לפי סוג הכלי
+            switch (piece.type) {
+                case 'pawn':
+                    return isValidPawnMove(fromRow, fromCol, toRow, toCol, piece.color);
+                case 'rook':
+                    return isValidRookMove(fromRow, fromCol, toRow, toCol);
+                case 'knight':
+                    return isValidKnightMove(fromRow, fromCol, toRow, toCol);
+                case 'bishop':
+                    return isValidBishopMove(fromRow, fromCol, toRow, toCol);
+                case 'queen':
+                    return isValidQueenMove(fromRow, fromCol, toRow, toCol);
+                case 'king':
+                    return isValidKingMove(fromRow, fromCol, toRow, toCol);
+                default:
+                    return false;
+            }
+        }
+
+        function isValidPawnMove(fromRow, fromCol, toRow, toCol, color) {
+            const direction = color === 'white' ? -1 : 1;
+            const startRow = color === 'white' ? 6 : 1;
+
+            // מהלך קדמי
+            if (fromCol === toCol && !board[toRow][toCol]) {
+                if (toRow === fromRow + direction) return true;
+                if (fromRow === startRow && toRow === fromRow + 2 * direction) return true;
+            }
+
+            // תפיסה אלכסונית
+            if (Math.abs(fromCol - toCol) === 1 && toRow === fromRow + direction) {
+                if (board[toRow][toCol] && board[toRow][toCol].color !== color) return true;
+            }
+
+            return false;
+        }
+
+        function isValidRookMove(fromRow, fromCol, toRow, toCol) {
+            if (fromRow !== toRow && fromCol !== toCol) return false;
+            return isPathClear(fromRow, fromCol, toRow, toCol);
+        }
+
+        function isValidKnightMove(fromRow, fromCol, toRow, toCol) {
+            const rowDiff = Math.abs(toRow - fromRow);
+            const colDiff = Math.abs(toCol - fromCol);
+            return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+        }
+
+        function isValidBishopMove(fromRow, fromCol, toRow, toCol) {
+            if (Math.abs(toRow - fromRow) !== Math.abs(toCol - fromCol)) return false;
+            return isPathClear(fromRow, fromCol, toRow, toCol);
+        }
+
+        function isValidQueenMove(fromRow, fromCol, toRow, toCol) {
+            return isValidRookMove(fromRow, fromCol, toRow, toCol) || 
+                   isValidBishopMove(fromRow, fromCol, toRow, toCol);
+        }
+
+        function isValidKingMove(fromRow, fromCol, toRow, toCol) {
+            const rowDiff = Math.abs(toRow - fromRow);
+            const colDiff = Math.abs(toCol - fromCol);
+            return rowDiff <= 1 && colDiff <= 1;
+        }
+
+        function isPathClear(fromRow, fromCol, toRow, toCol) {
+            const rowStep = toRow > fromRow ? 1 : toRow < fromRow ? -1 : 0;
+            const colStep = toCol > fromCol ? 1 : toCol < fromCol ? -1 : 0;
+
+            let row = fromRow + rowStep;
+            let col = fromCol + colStep;
+
+            while (row !== toRow || col !== toCol) {
+                if (board[row][col]) return false;
+                row += rowStep;
+                col += colStep;
+            }
+
+            return true;
+        }
+
+        function makeMove(fromRow, fromCol, toRow, toCol) {
+            const piece = board[fromRow][fromCol];
+            const capturedPiece = board[toRow][toCol];
+
+            // שמור את המהלך להיסטוריה
+            moveHistory.push({
+                from: [fromRow, fromCol],
+                to: [toRow, toCol],
+                piece: {...piece},
+                captured: capturedPiece ? {...capturedPiece} : null
+            });
+
+            // בצע את המהלך
+            board[toRow][toCol] = piece;
+            board[fromRow][fromCol] = null;
+
+            // בדוק אם יש שח מט
+            if (isCheckmate(currentPlayer === 'white' ? 'black' : 'white')) {
+                gameOver = true;
+                document.getElementById('statusMessage').textContent = 
+                    `שח מט! ${currentPlayer === 'white' ? 'לבן' : 'שחור'} ניצח!`;
+            } else if (isInCheck(currentPlayer === 'white' ? 'black' : 'white')) {
+                document.getElementById('statusMessage').textContent = 
+                    `${currentPlayer === 'white' ? 'שחור' : 'לבן'} בשח!`;
+            }
+
+            // החלף שחקן
+            currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+            renderBoard();
+        }
+
+        function isInCheck(color) {
+            // מצא את המלך
+            let kingRow = -1, kingCol = -1;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (board[r][c] && board[r][c].type === 'king' && board[r][c].color === color) {
+                        kingRow = r;
+                        kingCol = c;
+                        break;
+                    }
+                }
+                if (kingRow !== -1) break;
+            }
+
+            if (kingRow === -1) return false;
+
+            // בדוק אם כלי מהצבע השני יכול לתפוס את המלך
+            const opponentColor = color === 'white' ? 'black' : 'white';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (board[r][c] && board[r][c].color === opponentColor) {
+                        if (isValidMove(r, c, kingRow, kingCol)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        function isCheckmate(color) {
+            if (!isInCheck(color)) return false;
+
+            // בדוק אם יש מהלך חוקי כלשהו
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (board[r][c] && board[r][c].color === color) {
+                        for (let toR = 0; toR < 8; toR++) {
+                            for (let toC = 0; toC < 8; toC++) {
+                                if (isValidMove(r, c, toR, toC)) {
+                                    // נסה את המהלך
+                                    const tempPiece = board[toR][toC];
+                                    board[toR][toC] = board[r][c];
+                                    board[r][c] = null;
+                                    const stillInCheck = isInCheck(color);
+                                    board[r][c] = board[toR][toC];
+                                    board[toR][toC] = tempPiece;
+                                    if (!stillInCheck) return false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        function updateStatus() {
+            const playerElement = document.getElementById('currentPlayer');
+            playerElement.textContent = `תור: ${currentPlayer === 'white' ? 'לבן' : 'שחור'}`;
+            playerElement.className = `current-player ${currentPlayer}`;
+        }
+
+        function resetGame() {
+            initializeBoard();
+            currentPlayer = 'white';
+            selectedSquare = null;
+            moveHistory = [];
+            gameOver = false;
+            clearSelection();
+            renderBoard();
+            document.getElementById('statusMessage').textContent = 'בחר כלי כדי להתחיל';
+        }
+
+        function undoMove() {
+            if (moveHistory.length === 0) return;
+
+            const lastMove = moveHistory.pop();
+            board[lastMove.from[0]][lastMove.from[1]] = lastMove.piece;
+            board[lastMove.to[0]][lastMove.to[1]] = lastMove.captured;
+            currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+            gameOver = false;
+            clearSelection();
+            renderBoard();
+        }
+
+        // אתחול המשחק
+        initializeBoard();
+        renderBoard();
+    </script>
+</body>
+</html>
+
